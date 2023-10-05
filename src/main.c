@@ -26,72 +26,6 @@ static void die(const char *msg)
     exit(1);
 }
 
-Bool MakeAlwaysOnTop(Display *display, Window root, Window mywin)
-{
-    Atom wmStateAbove = XInternAtom(display, "_NET_WM_STATE_ABOVE", 1);
-    if (wmStateAbove != None)
-    {
-        printf("_NET_WM_STATE_ABOVE has atom of %ld\n", (long)wmStateAbove);
-    }
-    else
-    {
-        printf("ERROR: cannot find atom for _NET_WM_STATE_ABOVE !\n");
-        return False;
-    }
-
-    Atom wmNetWmState = XInternAtom(display, "_NET_WM_STATE", 1);
-    if (wmNetWmState != None)
-    {
-        printf("_NET_WM_STATE has atom of %ld\n", (long)wmNetWmState);
-    }
-    else
-    {
-        printf("ERROR: cannot find atom for _NET_WM_STATE !\n");
-        return False;
-    }
-
-    // set window always on top hint
-    if (wmStateAbove != None)
-    {
-        XClientMessageEvent xclient;
-        memset(&xclient, 0, sizeof(xclient));
-        //
-        // window  = the respective client window
-        // message_type = _NET_WM_STATE
-        // format = 32
-        // data.l[0] = the action, as listed below
-        // data.l[1] = first property to alter
-        // data.l[2] = second property to alter
-        // data.l[3] = source indication (0-unk,1-normal app,2-pager)
-        // other data.l[] elements = 0
-        //
-        xclient.type = ClientMessage;
-        xclient.window = mywin;              // GDK_WINDOW_XID(window);
-        xclient.message_type = wmNetWmState; // gdk_x11_get_xatom_by_name_for_display( display, "_NET_WM_STATE" );
-        xclient.format = 32;
-        xclient.data.l[0] = _NET_WM_STATE_ADD; // add ? _NET_WM_STATE_ADD : _NET_WM_STATE_REMOVE;
-        xclient.data.l[1] = wmStateAbove;      // gdk_x11_atom_to_xatom_for_display (display, state1);
-        xclient.data.l[2] = 0;                 // gdk_x11_atom_to_xatom_for_display (display, state2);
-        xclient.data.l[3] = 0;
-        xclient.data.l[4] = 0;
-        // gdk_wmspec_change_state( FALSE, window,
-        //   gdk_atom_intern_static_string ("_NET_WM_STATE_BELOW"),
-        //   GDK_NONE );
-        XSendEvent(display,
-                   // mywin - wrong, not app window, send to root window!
-                   root, // <-- DefaultRootWindow( display )
-                   False,
-                   SubstructureRedirectMask | SubstructureNotifyMask,
-                   (XEvent *)&xclient);
-
-        XFlush(display);
-
-        return True;
-    }
-
-    return False;
-}
-
 Window initWindow(Display *display, unsigned int *width, unsigned int *height, int *screen)
 {
     XVisualInfo vinfo;
@@ -115,15 +49,11 @@ Window initWindow(Display *display, unsigned int *width, unsigned int *height, i
     // attributes and properties
     Atom wm_delete_window = XInternAtom(display, "WM_DELETE_WINDOW", 0);
     Atom window_properties = XInternAtom(display, "_MOTIF_WM_HINTS", 1);
-    // Atom aod = XInternAtom(display, "_NET_WM_STATE_ABOVE", 1);
     Hints hints;
     hints.flags = 2; // i don't actually know what the fuck is this
     hints.decorations = 0;
     XSetWMProtocols(display, window, &wm_delete_window, 1);
     XChangeProperty(display, window, window_properties, window_properties, 32, PropModeReplace, (unsigned char *)&hints, 5);
-    // XChangeProperty(display, window, aod, aod, 32, PropModeReplace, (unsigned char *)&hints, 5);
-    if (!MakeAlwaysOnTop(display, DefaultRootWindow(display), window))
-        die("fuck");
     XserverRegion region = XFixesCreateRegion(display, NULL, 0);
     XFixesSetWindowShapeRegion(display, window, ShapeInput, 0, 0, region);
     XFixesDestroyRegion(display, region);
